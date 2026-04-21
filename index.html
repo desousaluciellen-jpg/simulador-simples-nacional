@@ -172,12 +172,11 @@ const cnaeDB = [
   { cod: "0111301", desc: "Cultivo de arroz", anexo: "1", fatorR: false },
   { cod: "0111302", desc: "Cultivo de milho", anexo: "1", fatorR: false },
   // ... (INSIRA AQUI A LISTA COMPLETA DE CNAEs que você tem, no formato acima)
-  // Por brevidade, estou incluindo apenas alguns exemplos. Você deve substituir pela sua lista completa.
   { cod: "3250706", desc: "Serviços de prótese dentária", anexo: "5", fatorR: true },
   { cod: "6201501", desc: "Desenvolvimento de programas de computador sob encomenda", anexo: "5", fatorR: true },
   { cod: "4530703", desc: "Comércio a varejo de peças e acessórios novos para veículos automotores", anexo: "1", fatorR: false },
   { cod: "7112000", desc: "Serviços de engenharia", anexo: "5", fatorR: true },
-  // COLOQUE AQUI TODOS OS SEUS CNAEs (use o formato exato: { cod: "XXXXXXX", desc: "Descrição", anexo: "X", fatorR: true/false })
+  // COLOQUE AQUI TODOS OS SEUS CNAEs
 ];
 // ======================== FIM DA BASE DE CNAEs ========================
 
@@ -189,10 +188,41 @@ const anexosData = {
   4: [ { faixa:1, de:0, ate:180000, aliquota:4.5, deduzir:0 }, { faixa:2, de:180000.01, ate:360000, aliquota:9.0, deduzir:8100 }, { faixa:3, de:360000.01, ate:720000, aliquota:10.2, deduzir:12420 }, { faixa:4, de:720000.01, ate:1800000, aliquota:14.0, deduzir:39780 }, { faixa:5, de:1800000.01, ate:3600000, aliquota:22.0, deduzir:183780 }, { faixa:6, de:3600000.01, ate:4800000, aliquota:33.0, deduzir:828000 } ],
   5: [ { faixa:1, de:0, ate:180000, aliquota:15.5, deduzir:0 }, { faixa:2, de:180000.01, ate:360000, aliquota:18.0, deduzir:4500 }, { faixa:3, de:360000.01, ate:720000, aliquota:19.5, deduzir:9900 }, { faixa:4, de:720000.01, ate:1800000, aliquota:20.5, deduzir:17100 }, { faixa:5, de:1800000.01, ate:3600000, aliquota:23.0, deduzir:62100 }, { faixa:6, de:3600000.01, ate:4800000, aliquota:30.5, deduzir:540000 } ]
 };
+
+// Repartição dos tributos por anexo e faixa (fallback genérico se não encontrar)
 const reparticaoDB = {
-  1: { 1:{irpj:5.5,csll:3.5,cofins:12.74,pis:2.76,cpp:41.0,icms:34.0,iss:0}, 6:{irpj:8.0,csll:5.0,cofins:20.0,pis:4.0,cpp:40.0,icms:23.0,iss:0} },
-  3: { 1:{irpj:4.0,csll:3.5,cofins:12.82,pis:2.78,cpp:43.4,icms:0,iss:33.5}, 6:{irpj:35.0,csll:15.0,cofins:16.03,pis:3.47,cpp:30.5,icms:0,iss:0} }
+  1: {
+    1: { irpj:5.5, csll:3.5, cofins:12.74, pis:2.76, cpp:41.0, icms:34.0, iss:0 },
+    2: { irpj:5.5, csll:3.5, cofins:12.74, pis:2.76, cpp:41.0, icms:34.0, iss:0 },
+    3: { irpj:5.5, csll:3.5, cofins:12.74, pis:2.76, cpp:42.0, icms:33.0, iss:0 },
+    4: { irpj:5.5, csll:3.5, cofins:12.74, pis:2.76, cpp:42.0, icms:33.0, iss:0 },
+    5: { irpj:5.5, csll:3.5, cofins:12.74, pis:2.76, cpp:42.0, icms:33.0, iss:0 },
+    6: { irpj:8.0, csll:5.0, cofins:20.0, pis:4.0, cpp:40.0, icms:23.0, iss:0 }
+  },
+  2: { // Simplificado – pode ser refinado
+    1: { irpj:5.5, csll:3.5, cofins:11.87, pis:2.63, cpp:37.5, icms:0, iss:0, ipi:39.0 },
+    6: { irpj:8.0, csll:5.0, cofins:20.0, pis:4.0, cpp:40.0, icms:0, iss:0, ipi:23.0 }
+  },
+  3: {
+    1: { irpj:4.0, csll:3.5, cofins:12.82, pis:2.78, cpp:43.4, icms:0, iss:33.5 },
+    2: { irpj:4.0, csll:3.5, cofins:14.05, pis:3.05, cpp:43.4, icms:0, iss:32.0 },
+    3: { irpj:4.0, csll:3.5, cofins:13.64, pis:2.96, cpp:43.4, icms:0, iss:32.5 },
+    4: { irpj:4.0, csll:3.5, cofins:13.64, pis:2.96, cpp:43.4, icms:0, iss:32.5 },
+    5: { irpj:4.0, csll:3.5, cofins:12.82, pis:2.78, cpp:43.4, icms:0, iss:33.5 },
+    6: { irpj:35.0, csll:15.0, cofins:16.03, pis:3.47, cpp:30.5, icms:0, iss:0 }
+  },
+  4: {
+    1: { irpj:18.8, csll:15.2, cofins:17.67, pis:3.83, cpp:44.5, icms:0, iss:0 },
+    6: { irpj:53.5, csll:21.5, cofins:0, pis:0, cpp:25.0, icms:0, iss:0 }
+  },
+  5: {
+    1: { irpj:25.0, csll:15.0, cofins:14.93, pis:3.23, cpp:28.85, icms:0, iss:13.0 },
+    6: { irpj:30.0, csll:20.0, cofins:0, pis:0, cpp:25.0, icms:0, iss:25.0 }
+  }
 };
+
+// Fallback genérico
+const fallbackReparticao = { irpj:4.0, csll:3.5, cofins:12.8, pis:2.8, cpp:43.4, icms:0, iss:33.5 };
 
 let historicoFaturamento = [0,0,0,0,0,0,0,0,0,0,0,0];
 let historicoFolha = [0,0,0,0,0,0,0,0,0,0,0,0];
@@ -203,7 +233,14 @@ const parseBR = s => parseFloat(String(s||'0').replace(/\./g,'').replace(',','.'
 const fmtBR = n => n.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
 const fmtMoney = n => 'R$ '+fmtBR(n);
 
-function maskMoney(el) { let v = el.value.replace(/\D/g,''); if(!v) { el.value=''; return; } v = (parseInt(v,10)/100).toFixed(2); el.value = v.replace('.',','); }
+// Máscara monetária com separador de milhar
+function maskMoney(el) {
+  let v = el.value.replace(/\D/g,'');
+  if (!v) { el.value = ''; return; }
+  v = (parseInt(v,10)/100).toFixed(2);
+  el.value = v.replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 function toast(msg, type='ok') {
   const wrap = $('#toast');
   const el = document.createElement('div');
@@ -293,17 +330,39 @@ function calcularSimples() {
   let folha12 = modoFolha === 'total' ? parseBR($('#folhaTotal').value) : [...$$('.folha-input')].reduce((s,i)=>s+parseBR(i.value),0);
   const cnaeAtual = $('#cnae').value.replace(/\D/g,''); const cnaeInfo = cnaeDB.find(c => c.cod.replace(/\D/g,'') === cnaeAtual);
   const aplicaFatorR = cnaeInfo ? cnaeInfo.fatorR : false; let anexoEfetivo = anexo;
+  let fatorR = 0;
   if (aplicaFatorR && rbt12 > 0) {
-    const fatorR = folha12 / rbt12;
+    fatorR = folha12 / rbt12;
     $('#infoFatorR').innerHTML = `📊 Fator R: ${(fatorR*100).toFixed(2)}% → ${fatorR >= 0.28 ? 'Anexo III' : 'Anexo V'}.`; anexoEfetivo = fatorR >= 0.28 ? 3 : 5;
   } else { $('#infoFatorR').innerHTML = aplicaFatorR ? 'Preencha a folha de pagamento.' : 'Atividade não sujeita ao Fator R.'; }
   const tabela = anexosData[anexoEfetivo]; let faixa = tabela.find(f => rbt12 <= f.ate); if (!faixa) { toast('RBT12 acima do limite (R$ 4,8M).'); return; }
   const aliquotaEfetiva = rbt12>0 ? (rbt12 * faixa.aliquota/100 - faixa.deduzir) / rbt12 * 100 : 0;
   const das = fatMes * aliquotaEfetiva/100;
+
+  // Repartição dos tributos
+  const rep = reparticaoDB[anexoEfetivo]?.[faixa.faixa] || fallbackReparticao;
+  const tributos = [
+    { nome: 'IRPJ', perc: rep.irpj || 0 },
+    { nome: 'CSLL', perc: rep.csll || 0 },
+    { nome: 'COFINS', perc: rep.cofins || 0 },
+    { nome: 'PIS', perc: rep.pis || 0 },
+    { nome: 'CPP', perc: rep.cpp || 0 },
+    { nome: 'ICMS', perc: rep.icms || 0 },
+    { nome: 'ISS', perc: rep.iss || 0 }
+  ];
+  let reparticaoHtml = '';
+  tributos.forEach(t => {
+    if (t.perc > 0) {
+      const valor = das * t.perc / 100;
+      reparticaoHtml += `<div class="flex justify-between items-center py-1.5 px-2 rounded-lg bg-white border border-slate-100"><span class="text-[12px] font-medium text-slate-600">${t.nome}</span><span class="text-[12px] font-mono text-slate-800">${t.perc.toFixed(2)}%  <span class="text-indigo-700 font-semibold ml-2">${fmtMoney(valor)}</span></span></div>`;
+    }
+  });
+
   const resDiv = $('#resultado'); resDiv.classList.remove('hidden');
   resDiv.innerHTML = `<div class="flex items-start justify-between gap-4 mb-6"><div><h2 class="text-[18px] font-semibold text-slate-900 flex items-center gap-2"><span class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>Resultado da Apuração</h2><p class="text-[13px] text-slate-500 mt-1">${mesAp} • Cálculo com Fator R e transição IBS/CBS</p></div><button id="exportarPDF" class="text-[12px] px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium">Exportar PDF</button></div>
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div class="p-4 rounded-xl bg-slate-50 border border-slate-200"><div class="text-[12px] text-slate-500">RBT12</div><div class="text-[20px] font-semibold text-slate-900 mt-1 font-mono">${fmtMoney(rbt12)}</div></div><div class="p-4 rounded-xl bg-slate-50 border border-slate-200"><div class="text-[12px] text-slate-500">Fator R</div><div class="flex items-baseline gap-2 mt-1"><span class="text-[20px] font-semibold text-slate-900 font-mono">${((folha12/rbt12)*100).toFixed(2).replace('.',',')}%</span><span class="text-[11px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-medium border border-emerald-200">≥28%</span></div></div><div class="p-4 rounded-xl bg-indigo-50 border border-indigo-200"><div class="text-[12px] text-indigo-700">Anexo Efetivo</div><div class="text-[20px] font-semibold text-indigo-900 mt-1">Anexo ${anexoEfetivo}</div><div class="text-[11px] text-indigo-700 -mt-1">${anexoEfetivo!==anexo?'migrado pelo Fator R':'anexo original'}</div></div></div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div class="p-4 rounded-xl bg-slate-50 border border-slate-200"><div class="text-[12px] text-slate-500">RBT12</div><div class="text-[20px] font-semibold text-slate-900 mt-1 font-mono">${fmtMoney(rbt12)}</div></div><div class="p-4 rounded-xl bg-slate-50 border border-slate-200"><div class="text-[12px] text-slate-500">Fator R</div><div class="flex items-baseline gap-2 mt-1"><span class="text-[20px] font-semibold text-slate-900 font-mono">${((folha12/rbt12)*100).toFixed(2).replace('.',',')}%</span><span class="text-[11px] px-2 py-0.5 rounded-md ${fatorR>=0.28?'bg-emerald-100 text-emerald-700':'bg-amber-100 text-amber-700'} font-medium border">${fatorR>=0.28?'≥28%':'<28%'}</span></div></div><div class="p-4 rounded-xl bg-indigo-50 border border-indigo-200"><div class="text-[12px] text-indigo-700">Anexo Efetivo</div><div class="text-[20px] font-semibold text-indigo-900 mt-1">Anexo ${anexoEfetivo}</div><div class="text-[11px] text-indigo-700 -mt-1">${anexoEfetivo!==anexo?'migrado pelo Fator R':'anexo original'}</div></div></div>
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div class="p-4 rounded-xl border border-slate-200"><div class="text-[12px] text-slate-500">Alíquota Nominal</div><div class="text-[18px] font-semibold mt-1">${faixa.aliquota.toFixed(2).replace('.',',')}%</div></div><div class="p-4 rounded-xl border border-slate-200"><div class="text-[12px] text-slate-500">Alíquota Efetiva</div><div class="text-[18px] font-semibold mt-1">${aliquotaEfetiva.toFixed(4).replace('.',',')}%</div></div><div class="p-4 rounded-xl bg-[#0F172A] text-white border border-slate-800"><div class="text-[12px] text-slate-300">DAS do Mês</div><div class="text-[24px] font-semibold mt-1 font-mono">${fmtMoney(das)}</div></div></div>
+  <div class="mb-6"><h3 class="text-[15px] font-semibold text-slate-800 mb-3">🧾 Repartição dos Tributos</h3><div class="grid grid-cols-2 md:grid-cols-3 gap-2">${reparticaoHtml}</div></div>
   <div class="p-4 rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200"><div class="flex items-start gap-3"><div class="w-8 h-8 rounded-lg bg-violet-600 text-white flex items-center justify-center shrink-0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></div><div><div class="text-[13px] font-semibold text-violet-900">Transição IBS/CBS – ${anoAp>=2027?'2027+':'2026'}</div><p class="text-[12.5px] text-violet-800 mt-1 leading-snug">CBS <strong>0,9%</strong> = ${fmtMoney(das*0.009)} • IBS <strong>0,1%</strong> = ${fmtMoney(das*0.001)}.</p></div></div></div>`;
   setStep(4); resDiv.scrollIntoView({behavior:'smooth'}); toast('Cálculo realizado!'); renderTabela(anexoEfetivo);
 }
