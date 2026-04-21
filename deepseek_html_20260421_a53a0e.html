@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador Simples Nacional · 2026/2027</title>
+  <!-- Fonts & Tailwind -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <!-- Bibliotecas externas (PDF) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    /* Estilos customizados para labels flutuantes e afins */
+    .floating-label {
+      position: absolute; left: 12px; top: 14px; font-size: 14px; color: #64748b;
+      background: white; padding: 0 4px; transition: all .15s ease; pointer-events: none;
+    }
+    .floating-input:focus + .floating-label,
+    .floating-input:not(:placeholder-shown) + .floating-label,
+    .floating-input.has-value + .floating-label {
+      top: -8px; font-size: 11px; color: #4F46E5; font-weight: 500;
+    }
+    .step-active { background:white; border-color:#E2E8F0 !important; box-shadow: 0 1px 2px rgba(15,23,42,.04); }
+    .step-active .step-icon { background:#4F46E5; color:white; box-shadow: 0 4px 12px rgba(79,70,229,.3); }
+    .step-active .step-title { color:#0F172A; }
+    .tab-active { background:#4F46E5; color:white; box-shadow: 0 2px 8px rgba(79,70,229,.25); }
+    .card { transition: all .2s ease; }
+    .card:hover { transform: translateY(-1px); box-shadow: 0 10px 25px -5px rgba(15,23,42,0.08), 0 4px 10px -5px rgba(15,23,42,0.04); }
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-thumb { background:#CBD5E1; border-radius:3px; }
+  </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 font-sans antialiased">
+
+<!-- TOAST Container -->
+<div id="toast" class="fixed top-5 right-5 z-[100] space-y-2"></div>
+
+<!-- HEADER -->
+<header class="bg-[#0F172A] border-b border-slate-800 sticky top-0 z-40">
+  <div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
+    <div class="flex items-center gap-3 sm:gap-4">
+      <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12h8M12 8v8"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-white text-[19px] sm:text-[22px] font-semibold leading-tight tracking-tight">Simulador Simples Nacional</h1>
+        <p class="text-slate-400 text-[12px] sm:text-[13px]">Enquadramento, Fator R e Cálculo Proporcional (IBS/CBS - 2026/2027)</p>
+      </div>
+    </div>
+    <div class="hidden md:flex items-center gap-3">
+      <div class="text-right">
+        <div class="text-[12px] text-slate-400">Base CNAE atualizada</div>
+        <div class="text-[13px] text-slate-200 font-medium">+1000 atividades</div>
+      </div>
+      <div class="w-9 h-9 rounded-full bg-indigo-700 ring-2 ring-indigo-500 flex items-center justify-center text-white text-sm font-semibold">SN</div>
+    </div>
+  </div>
+</header>
+
+<div class="max-w-[1400px] mx-auto px-4 sm:px-6 py-6 lg:py-8">
+  <!-- Mobile steps -->
+  <div class="lg:hidden flex gap-2 overflow-x-auto pb-4 -mx-1 px-1 mb-2">
+    <button data-step="1" class="step-mobile flex-shrink-0 px-3 py-2 rounded-xl text-[13px] font-medium bg-indigo-600 text-white">1. Cadastro</button>
+    <button data-step="2" class="step-mobile flex-shrink-0 px-3 py-2 rounded-xl text-[13px] font-medium bg-white border-slate-200 text-slate-600">2. Tabelas</button>
+    <button data-step="3" class="step-mobile flex-shrink-0 px-3 py-2 rounded-xl text-[13px] font-medium bg-white border border-slate-200 text-slate-600">3. Apuração</button>
+    <button data-step="4" class="step-mobile flex-shrink-0 px-3 py-2 rounded-xl text-[13px] font-medium bg-white border border-slate-200 text-slate-600">4. Resultado</button>
+  </div>
+
+  <div class="flex gap-8 items-start">
+    <!-- SIDEBAR -->
+    <aside class="hidden lg:block w-[260px] shrink-0 sticky top-[104px]">
+      <nav class="space-y-2">
+        <button data-step="1" class="step step-active w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl border border-transparent text-left transition">
+          <div class="step-icon w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div>
+            <div class="step-title text-[14px] font-semibold text-slate-700">1. Cadastro</div>
+            <div class="text-[12px] text-slate-500">Empresa e CNAE</div>
+          </div>
+        </button>
+        <button data-step="2" class="step w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl border border-transparent text-left transition hover:bg-white/60">
+          <div class="step-icon w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          </div>
+          <div>
+            <div class="step-title text-[14px] font-semibold text-slate-700">2. Tabelas</div>
+            <div class="text-[12px] text-slate-500">Anexos I-V</div>
+          </div>
+        </button>
+        <button data-step="3" class="step w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl border border-transparent text-left transition hover:bg-white/60">
+          <div class="step-icon w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h8M8 14h4M8 18h4"/></svg>
+          </div>
+          <div>
+            <div class="step-title text-[14px] font-semibold text-slate-700">3. Apuração</div>
+            <div class="text-[12px] text-slate-500">RBT12 e Fator R</div>
+          </div>
+        </button>
+        <button data-step="4" class="step w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl border border-transparent text-left transition hover:bg-white/60">
+          <div class="step-icon w-10 h-10 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+          </div>
+          <div>
+            <div class="step-title text-[14px] font-semibold text-slate-700">4. Resultado</div>
+            <div class="text-[12px] text-slate-500">DAS e IBS/CBS</div>
+          </div>
+        </button>
+      </nav>
+      <div class="mt-8 p-4 rounded-2xl bg-gradient-to-b from-indigo-50 to-white border border-indigo-100">
+        <div class="flex items-center gap-2 text-indigo-700 font-medium text-[13px]">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Conformidade 2026
+        </div>
+        <p class="text-[12px] text-slate-600 mt-1.5 leading-snug">Simulação atualizada com regras de transição IBS/CBS, Fator R e tabelas vigentes.</p>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 min-w-0 space-y-6">
+      <!-- CARD 1: CADASTRO -->
+      <section id="cadastro" class="card bg-white rounded-2xl shadow-sm border border-slate-200/70 p-5 sm:p-7">
+        <div class="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <h2 class="text-[18px] font-semibold text-slate-900">Cadastro e Enquadramento</h2>
+            <p class="text-[13px] text-slate-500 mt-0.5">Identifique a empresa e confirme o anexo inicial pelo CNAE.</p>
+          </div>
+          <span class="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-medium border border-emerald-200">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Ativo
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div class="relative">
+            <input id="nomeEmpresa" type="text" placeholder=" " class="floating-input w-full h-[52px] px-3 pt-4 bg-white border border-slate-200 rounded-xl text-[15px] text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition" value="Tech Solutions LTDA"/>
+            <label class="floating-label">Nome Empresarial</label>
+          </div>
+          <div class="relative">
+            <input id="cnpj" type="text" placeholder=" " class="floating-input w-full h-[52px] px-3 pt-4 bg-white border border-slate-200 rounded-xl text-[15px] font-mono text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition" value="12.345.678/0001-90"/>
+            <label class="floating-label">CNPJ</label>
+          </div>
+          <div class="relative">
+            <input id="dataInicio" type="date" placeholder=" " class="floating-input w-full h-[52px] px-3 pt-4 bg-white border border-slate-200 rounded-xl text-[15px] text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition" value="2026-01-15"/>
+            <label class="floating-label">Data de Início</label>
+          </div>
+          <div class="relative">
+            <input id="cnae" type="text" placeholder=" " class="floating-input w-full h-[52px] px-3 pr-10 pt-4 bg-white border border-slate-200 rounded-xl text-[15px] font-mono text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition" value="6201501"/>
+            <label class="floating-label">Buscar CNAE</label>
+            <button id="btnBuscarCnae" class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            </button>
+          </div>
+          <div class="relative">
+            <select id="anexoSelect" class="floating-input w-full h-[52px] px-3 pt-4 bg-white border border-slate-200 rounded-xl text-[15px] text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition appearance-none">
+              <option value="1">Anexo I - Comércio</option><option value="2">Anexo II - Indústria</option>
+              <option value="3">Anexo III - Serviços</option><option value="4">Anexo IV - Serviços</option>
+              <option value="5" selected>Anexo V - Serviços</option>
+            </select>
+            <label class="floating-label">Anexo Base</label>
+            <svg class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </div>
+          <div class="relative">
+            <input id="descricaoAtividade" type="text" placeholder=" " readonly class="floating-input w-full h-[52px] px-3 pt-4 bg-slate-50 border border-slate-200 rounded-xl text-[15px] text-slate-900 outline-none" value="Desenvolvimento de software sob encomenda"/>
+            <label class="floating-label">Atividade</label>
+          </div>
+        </div>
+
+        <div id="infoCNAE" class="mt-5 flex items-start gap-3 p-3.5 rounded-xl bg-sky-50 border border-sky-100">
+          <div class="w-8 h-8 rounded-lg bg-sky-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-sky-600/20">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+          </div>
+          <p class="text-[13.5px] leading-snug text-sky-900"><span id="infoCNAETexto">Digite um CNAE válido.</span></p>
+        </div>
+      </section>
+
+      <!-- CARD 2: TABELAS -->
+      <section id="tabelas" class="card bg-white rounded-2xl shadow-sm border border-slate-200/70 p-5 sm:p-7">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+          <div>
+            <h2 class="text-[18px] font-semibold text-slate-900">Tabelas Oficiais (2026)</h2>
+            <p class="text-[13px] text-slate-500 mt-0.5">Alíquotas e valores a deduzir por faixa de receita.</p>
+          </div>
+          <div class="flex bg-slate-100 p-1 rounded-xl gap-1 self-start overflow-x-auto" id="tabsAnexosContainer"></div>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+          <table class="w-full text-[13.5px]">
+            <thead class="bg-slate-50 text-slate-600 border-b border-slate-200">
+              <tr><th class="text-left py-2.5 px-4 font-medium">Faixa</th><th class="text-right py-2.5 px-4 font-medium">De</th><th class="text-right py-2.5 px-4 font-medium">Até</th><th class="text-right py-2.5 px-4 font-medium">Alíquota</th><th class="text-right py-2.5 px-4 font-medium">Valor a Deduzir</th></tr>
+            </thead>
+            <tbody id="tabelaBody" class="divide-y divide-slate-100 bg-white"></tbody>
+          </table>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-3">Valores em reais. Para IBS/CBS 2027+, aplicar redução proporcional sobre tributos substituídos.</p>
+      </section>
+
+      <!-- CARD 3: APURAÇÃO -->
+      <section id="apuracao" class="card bg-white rounded-2xl shadow-sm border border-slate-200/70 p-5 sm:p-7">
+        <h2 class="text-[18px] font-semibold text-slate-900">Lógica de Apuração</h2>
+        <p class="text-[13px] text-slate-500 mt-0.5 mb-6">Informe o faturamento e a folha para cálculo do Fator R.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+          <div class="relative">
+            <input type="month" id="mesApuracao" class="floating-input w-full h-[52px] px-3 pt-4 bg-white border border-slate-200 rounded-xl text-[15px] text-slate-900 outline-none focus:border-indigo-500" value="2026-04">
+            <label class="floating-label">Mês de Apuração</label>
+          </div>
+          <div class="relative">
+            <input id="faturamentoMes" type="text" inputmode="decimal" placeholder=" " class="floating-input money w-full h-[52px] px-3 pt-4 bg-white border border-slate-200 rounded-xl text-[15px] font-mono text-slate-900 outline-none focus:border-indigo-500 text-right" value="0,00"/>
+            <label class="floating-label">Faturamento do Mês (R$)</label>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div class="inline-flex bg-slate-100 p-1 rounded-xl">
+            <button id="btnMensalRBT" class="px-3.5 py-1.5 text-[13px] font-medium rounded-lg tab-active">Preenchimento Mensal</button>
+            <button id="btnTotalRBT" class="px-3.5 py-1.5 text-[13px] font-medium rounded-lg text-slate-600 hover:text-slate-900">Informar Total</button>
+          </div>
+          <div class="text-[12px] text-slate-500">RBT12: período de 12 meses anteriores</div>
+        </div>
+
+        <!-- RBT12 Mensal -->
+        <div id="rbtMensal">
+          <h3 class="text-[13px] font-semibold text-slate-700 mb-3">Receita Bruta dos Últimos 12 Meses (RBT12)</h3>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" id="camposRBT12"></div>
+        </div>
+        <!-- RBT12 Total -->
+        <div id="rbtTotalWrap" class="hidden">
+          <label class="block text-[13px] font-medium text-slate-700 mb-2">RBT12 Total (últimos 12 meses)</label>
+          <input id="rbt12Total" type="text" class="money w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-[15px] font-mono text-right" value="0,00"/>
+        </div>
+
+        <div class="border-t border-slate-200 my-6"></div>
+
+        <!-- FOLHA (Fator R) -->
+        <div id="folhaMensal">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-[13px] font-semibold text-slate-700">Folha de Pagamento (12 meses) - para Fator R</h3>
+            <span class="text-[11px] px-2 py-1 rounded-md bg-amber-50 text-amber-700 border border-amber-200">Fator R = Folha / RBT12</span>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3" id="camposFolha"></div>
+        </div>
+        <div id="folhaTotalWrap" class="hidden">
+          <label class="block text-[13px] font-medium text-slate-700 mb-2">Folha Total (12 meses)</label>
+          <input id="folhaTotal" type="text" class="money w-full h-11 px-3 bg-white border border-slate-200 rounded-xl text-[15px] font-mono text-right" value="0,00"/>
+        </div>
+
+        <div id="infoFatorR" class="mt-4 p-3 rounded-lg bg-amber-50 text-amber-800 text-[13px]"></div>
+        <div id="infoInicioAtividade" class="mt-2 p-3 rounded-lg bg-blue-50 text-blue-800 text-[13px]"></div>
+      </section>
+
+      <!-- CARD 4: RESULTADO (oculto inicialmente) -->
+      <section id="resultado" class="hidden card bg-white rounded-2xl shadow-sm border border-slate-200/70 p-5 sm:p-7">
+        <!-- preenchido dinamicamente -->
+      </section>
+
+      <!-- ACTION BAR -->
+      <div class="sticky bottom-0 z-30 -mx-4 sm:mx-0 mt-2">
+        <div class="mx-4 sm:mx-0 px-4 sm:px-5 py-3 sm:py-4 bg-white/80 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-lg shadow-slate-900/5 flex flex-wrap gap-2.5 justify-end">
+          <button id="simularMesSeguinte" class="px-4 h-11 rounded-xl border border-slate-300 text-slate-700 text-[14px] font-medium hover:bg-slate-50 active:scale-[.98] transition">⏩ Simular Mês Seguinte</button>
+          <button id="novaSimulacao" class="px-4 h-11 rounded-xl border border-slate-300 text-slate-700 text-[14px] font-medium hover:bg-slate-50 active:scale-[.98] transition">🔄 Nova Simulação</button>
+          <button id="salvarHistorico" class="px-4 h-11 rounded-xl border border-slate-300 text-slate-700 text-[14px] font-medium hover:bg-slate-50 active:scale-[.98] transition">💾 Salvar Histórico</button>
+          <button id="gerarPDF" class="px-4 h-11 rounded-xl border border-slate-300 text-slate-700 text-[14px] font-medium hover:bg-slate-50 active:scale-[.98] transition">📄 PDF</button>
+          <button id="calcular" class="px-5 h-11 rounded-xl bg-[#4F46E5] text-white text-[14px] font-semibold shadow-md shadow-indigo-600/20 hover:bg-indigo-600 active:scale-[.98] transition flex items-center gap-2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            Calcular DAS
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script>
+// ======================== LÓGICA COMPLETA DO SIMULADOR ========================
+(function(){
+  "use strict";
+
+  // ---------- BASE DE CNAEs (será carregada via fetch, fallback mínimo) ----------
+  let cnaeDB = [];
+  
+  // Tabelas dos anexos
+  const anexosData = {
+      1: [ { faixa:1, de:0, ate:180000, aliquota:4.0, deduzir:0 }, { faixa:2, de:180000.01, ate:360000, aliquota:7.3, deduzir:5940 }, { faixa:3, de:360000.01, ate:720000, aliquota:9.5, deduzir:13860 }, { faixa:4, de:720000.01, ate:1800000, aliquota:10.7, deduzir:22500 }, { faixa:5, de:1800000.01, ate:3600000, aliquota:14.3, deduzir:87300 }, { faixa:6, de:3600000.01, ate:4800000, aliquota:19.0, deduzir:378000 } ],
+      2: [ { faixa:1, de:0, ate:180000, aliquota:4.5, deduzir:0 }, { faixa:2, de:180000.01, ate:360000, aliquota:7.8, deduzir:5940 }, { faixa:3, de:360000.01, ate:720000, aliquota:10.0, deduzir:13860 }, { faixa:4, de:720000.01, ate:1800000, aliquota:11.2, deduzir:22500 }, { faixa:5, de:1800000.01, ate:3600000, aliquota:14.7, deduzir:85500 }, { faixa:6, de:3600000.01, ate:4800000, aliquota:30.0, deduzir:720000 } ],
+      3: [ { faixa:1, de:0, ate:180000, aliquota:6.0, deduzir:0 }, { faixa:2, de:180000.01, ate:360000, aliquota:11.2, deduzir:9360 }, { faixa:3, de:360000.01, ate:720000, aliquota:13.5, deduzir:17640 }, { faixa:4, de:720000.01, ate:1800000, aliquota:16.0, deduzir:35640 }, { faixa:5, de:1800000.01, ate:3600000, aliquota:21.0, deduzir:125640 }, { faixa:6, de:3600000.01, ate:4800000, aliquota:33.0, deduzir:648000 } ],
+      4: [ { faixa:1, de:0, ate:180000, aliquota:4.5, deduzir:0 }, { faixa:2, de:180000.01, ate:360000, aliquota:9.0, deduzir:8100 }, { faixa:3, de:360000.01, ate:720000, aliquota:10.2, deduzir:12420 }, { faixa:4, de:720000.01, ate:1800000, aliquota:14.0, deduzir:39780 }, { faixa:5, de:1800000.01, ate:3600000, aliquota:22.0, deduzir:183780 }, { faixa:6, de:3600000.01, ate:4800000, aliquota:33.0, deduzir:828000 } ],
+      5: [ { faixa:1, de:0, ate:180000, aliquota:15.5, deduzir:0 }, { faixa:2, de:180000.01, ate:360000, aliquota:18.0, deduzir:4500 }, { faixa:3, de:360000.01, ate:720000, aliquota:19.5, deduzir:9900 }, { faixa:4, de:720000.01, ate:1800000, aliquota:20.5, deduzir:17100 }, { faixa:5, de:1800000.01, ate:3600000, aliquota:23.0, deduzir:62100 }, { faixa:6, de:3600000.01, ate:4800000, aliquota:30.5, deduzir:540000 } ]
+  };
+
+  const reparticaoDB = {
+      1: { 1:{irpj:5.5,csll:3.5,cofins:12.74,pis:2.76,cpp:41.0,icms:34.0,iss:0}, 6:{irpj:8.0,csll:5.0,cofins:20.0,pis:4.0,cpp:40.0,icms:23.0,iss:0} },
+      3: { 1:{irpj:4.0,csll:3.5,cofins:12.82,pis:2.78,cpp:43.4,icms:0,iss:33.5}, 6:{irpj:35.0,csll:15.0,cofins:16.03,pis:3.47,cpp:30.5,icms:0,iss:0} }
+  };
+
+  // Históricos para simulação contínua
+  let historicoFaturamento = [0,0,0,0,0,0,0,0,0,0,0,0];
+  let historicoFolha = [0,0,0,0,0,0,0,0,0,0,0,0];
+
+  // ---------- FUNÇÕES AUXILIARES ----------
+  const $ = s => document.querySelector(s);
+  const $$ = s => document.querySelectorAll(s);
+  const parseBR = s => parseFloat(String(s||'0').replace(/\./g,'').replace(',','.'))||0;
+  const fmtBR = n => n.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const fmtMoney = n => 'R$ '+fmtBR(n);
+
+  function maskMoney(el) {
+    let v = el.value.replace(/\D/g,'');
+    if(!v) { el.value = ''; return; }
+    v = (parseInt(v,10)/100).toFixed(2);
+    el.value = v.replace('.',',');
+  }
+
+  function toast(msg, type='ok') {
+    const wrap = $('#toast');
+    const el = document.createElement('div');
+    el.className = `px-4 py-2.5 rounded-xl shadow-lg border text-[13px] font-medium flex items-center gap-2 backdrop-blur bg-white/90 ${type==='ok'?'border-emerald-200 text-emerald-800':'border-slate-200 text-slate-700'}`;
+    el.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> ${msg}`;
+    wrap.appendChild(el);
+    setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateY(-8px)'; setTimeout(()=>el.remove(),200); }, 2800);
+  }
+
+  // Renderizar tabelas e tabs
+  function renderTabela(anexo) {
+    const tbody = $('#tabelaBody');
+    tbody.innerHTML = '';
+    anexosData[anexo].forEach(r => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-slate-50/70';
+      tr.innerHTML = `<td class="py-2.5 px-4">${r.faixa}ª</td><td class="py-2.5 px-4 text-right font-mono">${fmtBR(r.de)}</td><td class="py-2.5 px-4 text-right font-mono">${fmtBR(r.ate)}</td><td class="py-2.5 px-4 text-right font-mono">${r.aliquota.toFixed(2).replace('.',',')}%</td><td class="py-2.5 px-4 text-right font-mono">${fmtBR(r.deduzir)}</td>`;
+      tbody.appendChild(tr);
+    });
+    $$('.tab-anexo').forEach(b => {
+      b.classList.toggle('tab-active', b.dataset.anexo == anexo);
+      b.classList.toggle('text-slate-600', b.dataset.anexo != anexo);
+    });
+  }
+
+  function criarTabsAnexos() {
+    const container = $('#tabsAnexosContainer');
+    container.innerHTML = '';
+    for (let i=1; i<=5; i++) {
+      const btn = document.createElement('button');
+      btn.dataset.anexo = i;
+      btn.className = `tab-anexo px-3 py-1.5 text-[13px] font-medium rounded-lg transition ${i===5?'tab-active':'text-slate-600 hover:text-slate-900'}`;
+      btn.textContent = `Anexo ${i}`;
+      btn.addEventListener('click', ()=> renderTabela(i));
+      container.appendChild(btn);
+    }
+  }
+
+  // Atualizar anexo por CNAE
+  async function atualizarAnexoPorCNAE() {
+    const input = $('#cnae');
+    const codNumerico = input.value.trim().replace(/\D/g,'');
+    if (!cnaeDB.length) {
+      try {
+        const resp = await fetch('cnaes.json');
+        cnaeDB = await resp.json();
+      } catch(e) { /* usa fallback */ }
+      if (!cnaeDB.length) {
+        cnaeDB = [{ cod:"6201501", desc:"Desenvolvimento de software sob encomenda", anexo:"5", fatorR:true }];
+      }
+    }
+    const encontrado = cnaeDB.find(item => item.cod.replace(/\D/g,'') === codNumerico);
+    const infoDiv = $('#infoCNAETexto');
+    const anexoSelect = $('#anexoSelect');
+    const descInput = $('#descricaoAtividade');
+    if (encontrado) {
+      anexoSelect.value = encontrado.anexo;
+      descInput.value = encontrado.desc;
+      infoDiv.innerHTML = `✅ CNAE ${encontrado.cod} - ${encontrado.desc}. Anexo ${encontrado.anexo}. Fator R: ${encontrado.fatorR ? 'Sim' : 'Não'}.`;
+    } else {
+      infoDiv.innerHTML = `⚠️ CNAE não encontrado na base. Selecione o anexo manualmente.`;
+    }
+  }
+
+  // Gerar campos mensais dinâmicos
+  function gerarCamposMeses() {
+    const mesAp = $('#mesApuracao').value;
+    if (!mesAp) return;
+    const [ano, mes] = mesAp.split('-').map(Number);
+    const dataAp = new Date(ano, mes-1, 1);
+    const container = $('#camposRBT12');
+    container.innerHTML = '';
+    for (let i=0; i<12; i++) {
+      const d = new Date(dataAp); d.setMonth(d.getMonth() - (i+1));
+      const label = d.toLocaleDateString('pt-BR', { month:'2-digit', year:'numeric' });
+      const div = document.createElement('div');
+      const val = fmtBR(historicoFaturamento[11-i] || 0);
+      div.innerHTML = `<label class="block text-[11px] text-slate-500 mb-1 font-medium">${label}</label>
+        <input data-rbt class="rbt-input w-full h-10 px-2.5 bg-white border border-slate-200 rounded-lg text-[14px] text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" value="${val}"/>`;
+      container.appendChild(div);
+    }
+    $$('.rbt-input').forEach(i => { i.addEventListener('input', ()=>maskMoney(i)); i.addEventListener('blur', ()=>maskMoney(i)); });
+  }
+
+  function gerarCamposFolha() {
+    const mesAp = $('#mesApuracao').value;
+    if (!mesAp) return;
+    const [ano, mes] = mesAp.split('-').map(Number);
+    const dataAp = new Date(ano, mes-1, 1);
+    const container = $('#camposFolha');
+    container.innerHTML = '';
+    for (let i=0; i<12; i++) {
+      const d = new Date(dataAp); d.setMonth(d.getMonth() - (i+1));
+      const label = d.toLocaleDateString('pt-BR', { month:'2-digit', year:'numeric' });
+      const div = document.createElement('div');
+      const val = fmtBR(historicoFolha[11-i] || 0);
+      div.innerHTML = `<label class="block text-[11px] text-slate-500 mb-1 font-medium">${label}</label>
+        <input data-folha class="folha-input w-full h-10 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[14px] text-right font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500" value="${val}"/>`;
+      container.appendChild(div);
+    }
+    $$('.folha-input').forEach(i => { i.addEventListener('input', ()=>maskMoney(i)); i.addEventListener('blur', ()=>maskMoney(i)); });
+  }
+
+  // Steps
+  function setStep(n) {
+    $$('.step').forEach((s,i)=> s.classList.toggle('step-active', i===n-1));
+    $$('.step-mobile').forEach((s,i)=>{
+      s.classList.toggle('bg-indigo-600', i===n-1);
+      s.classList.toggle('text-white', i===n-1);
+      s.classList.toggle('bg-white', i!==n-1);
+      s.classList.toggle('border', i!==n-1);
+    });
+  }
+
+  // Cálculo principal
+  function calcularSimples() {
+    let anexo = parseInt($('#anexoSelect').value);
+    const mesAp = $('#mesApuracao').value;
+    const dataInicio = $('#dataInicio').value;
+    if (!mesAp || !dataInicio) { toast('Preencha data de início e mês de apuração.', 'error'); return; }
+    const [anoAp, mesApNum] = mesAp.split('-').map(Number);
+    const fatMes = parseBR($('#faturamentoMes').value);
+
+    const modoRBT = $('#btnMensalRBT').classList.contains('tab-active') ? 'individual' : 'total';
+    let rbt12 = 0;
+    if (modoRBT === 'total') {
+      rbt12 = parseBR($('#rbt12Total').value);
+    } else {
+      rbt12 = [...$$('.rbt-input')].reduce((s, i) => s + parseBR(i.value), 0);
+    }
+
+    const dataIni = new Date(dataInicio);
+    const dataAp = new Date(anoAp, mesApNum-1, 1);
+    let mesesAtividade = (dataAp.getFullYear() - dataIni.getFullYear())*12 + (dataAp.getMonth() - dataIni.getMonth());
+    mesesAtividade = Math.max(0, mesesAtividade);
+    let msgInicio = '';
+    if (mesesAtividade < 12) {
+      if (mesesAtividade === 0) {
+        rbt12 = fatMes * 12;
+        msgInicio = `Empresa iniciada em ${dataInicio}. Primeiro mês. RBT12 = R$ ${fmtBR(fatMes)} × 12 = ${fmtMoney(rbt12)}.`;
+      } else {
+        const inputs = $$('.rbt-input');
+        let soma = 0;
+        for (let i=0; i<Math.min(mesesAtividade,12); i++) soma += parseBR(inputs[i]?.value||'0');
+        rbt12 = (soma / mesesAtividade) * 12;
+        msgInicio = `Empresa iniciada em ${dataInicio}. ${mesesAtividade} meses. RBT12 proporcional = ${fmtMoney(rbt12)}.`;
+      }
+    }
+    $('#infoInicioAtividade').innerHTML = msgInicio || 'Empresa com 12 meses ou mais de atividade.';
+
+    const modoFolha = $('#btnMensalRBT').classList.contains('tab-active') ? 'individual' : 'total';
+    let folha12 = 0;
+    if (modoFolha === 'total') {
+      folha12 = parseBR($('#folhaTotal').value);
+    } else {
+      folha12 = [...$$('.folha-input')].reduce((s, i) => s + parseBR(i.value), 0);
+    }
+
+    const cnaeAtual = $('#cnae').value.replace(/\D/g,'');
+    const cnaeInfo = cnaeDB.find(c => c.cod.replace(/\D/g,'') === cnaeAtual);
+    const aplicaFatorR = cnaeInfo ? cnaeInfo.fatorR : false;
+    let anexoEfetivo = anexo;
+    if (aplicaFatorR && rbt12 > 0) {
+      const fatorR = folha12 / rbt12;
+      $('#infoFatorR').innerHTML = `📊 Fator R: ${(fatorR*100).toFixed(2)}% → ${fatorR >= 0.28 ? 'Anexo III' : 'Anexo V'}.`;
+      anexoEfetivo = fatorR >= 0.28 ? 3 : 5;
+    } else {
+      $('#infoFatorR').innerHTML = aplicaFatorR ? 'Preencha a folha de pagamento.' : 'Atividade não sujeita ao Fator R.';
+    }
+
+    const tabela = anexosData[anexoEfetivo];
+    let faixa = tabela.find(f => rbt12 <= f.ate);
+    if (!faixa) { toast('RBT12 acima do limite (R$ 4,8M).', 'error'); return; }
+    const aliquotaEfetiva = rbt12>0 ? (rbt12 * faixa.aliquota/100 - faixa.deduzir) / rbt12 * 100 : 0;
+    const das = fatMes * aliquotaEfetiva/100;
+
+    const resDiv = $('#resultado');
+    resDiv.classList.remove('hidden');
+    resDiv.innerHTML = `
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <div><h2 class="text-[18px] font-semibold text-slate-900 flex items-center gap-2"><span class="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/20"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>Resultado da Apuração</h2>
+        <p class="text-[13px] text-slate-500 mt-1">${mesAp} • Cálculo com Fator R e transição IBS/CBS</p></div>
+        <button id="exportarPDF" class="text-[12px] px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium">Exportar PDF</button>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200"><div class="text-[12px] text-slate-500">RBT12</div><div class="text-[20px] font-semibold text-slate-900 mt-1 font-mono">${fmtMoney(rbt12)}</div></div>
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200"><div class="text-[12px] text-slate-500">Fator R</div><div class="flex items-baseline gap-2 mt-1"><span class="text-[20px] font-semibold text-slate-900 font-mono">${((folha12/rbt12)*100).toFixed(2).replace('.',',')}%</span><span class="text-[11px] px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 font-medium border border-emerald-200">≥28%</span></div></div>
+        <div class="p-4 rounded-xl bg-indigo-50 border border-indigo-200"><div class="text-[12px] text-indigo-700">Anexo Efetivo</div><div class="text-[20px] font-semibold text-indigo-900 mt-1">Anexo ${anexoEfetivo}</div><div class="text-[11px] text-indigo-700 -mt-1">${anexoEfetivo!==anexo?'migrado pelo Fator R':'anexo original'}</div></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="p-4 rounded-xl border border-slate-200"><div class="text-[12px] text-slate-500">Alíquota Nominal</div><div class="text-[18px] font-semibold mt-1">${faixa.aliquota.toFixed(2).replace('.',',')}%</div></div>
+        <div class="p-4 rounded-xl border border-slate-200"><div class="text-[12px] text-slate-500">Alíquota Efetiva</div><div class="text-[18px] font-semibold mt-1">${aliquotaEfetiva.toFixed(4).replace('.',',')}%</div></div>
+        <div class="p-4 rounded-xl bg-[#0F172A] text-white border border-slate-800"><div class="text-[12px] text-slate-300">DAS do Mês</div><div class="text-[24px] font-semibold mt-1 font-mono">${fmtMoney(das)}</div></div>
+      </div>
+      <div class="p-4 rounded-xl bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200">
+        <div class="flex items-start gap-3"><div class="w-8 h-8 rounded-lg bg-violet-600 text-white flex items-center justify-center shrink-0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></div>
+        <div><div class="text-[13px] font-semibold text-violet-900">Transição IBS/CBS – ${anoAp>=2027?'2027+':'2026'}</div><p class="text-[12.5px] text-violet-800 mt-1 leading-snug">CBS <strong>0,9%</strong> = ${fmtMoney(das*0.009)} • IBS <strong>0,1%</strong> = ${fmtMoney(das*0.001)}.</p></div></div>
+      </div>
+    `;
+    setStep(4);
+    resDiv.scrollIntoView({behavior:'smooth'});
+    toast('Cálculo realizado!');
+    renderTabela(anexoEfetivo);
+  }
+
+  function simularMesSeguinte() {
+    const inputsFat = $$('.rbt-input');
+    const valoresFat = [...inputsFat].map(i => parseBR(i.value));
+    const fatAtual = parseBR($('#faturamentoMes').value);
+    historicoFaturamento = [...valoresFat.slice(1), fatAtual];
+    historicoFolha = [...$$('.folha-input')].map(i => parseBR(i.value)).slice(1);
+    const mesAtual = $('#mesApuracao').value;
+    if (mesAtual) {
+      const [ano, mes] = mesAtual.split('-').map(Number);
+      const prox = new Date(ano, mes, 1);
+      $('#mesApuracao').value = `${prox.getFullYear()}-${String(prox.getMonth()+1).padStart(2,'0')}`;
+    }
+    gerarCamposMeses();
+    gerarCamposFolha();
+    calcularSimples();
+    toast('Mês seguinte simulado. Verifique os valores.');
+  }
+
+  function novaSimulacao() { if (confirm('Iniciar nova simulação? Todos os dados serão perdidos.')) location.reload(); }
+
+  // Histórico
+  let historico = JSON.parse(localStorage.getItem('simplesHistorico')) || [];
+  function salvarHistorico() {
+    const mes = $('#mesApuracao').value;
+    const fat = parseBR($('#faturamentoMes').value);
+    const dasTexto = $('#resultado .font-mono:last-child')?.textContent || '0,00';
+    const das = parseBR(dasTexto.replace('R$',''));
+    historico.push({ data: new Date().toLocaleString(), mes, fat, das });
+    localStorage.setItem('simplesHistorico', JSON.stringify(historico));
+    toast('Salvo no histórico.');
+  }
+
+  async function gerarPDF() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    const res = $('#resultado');
+    if (res.classList.contains('hidden')) { toast('Realize um cálculo primeiro.'); return; }
+    const canvas = await html2canvas(res, { scale: 2 });
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 10, 40, 190, canvas.height*190/canvas.width);
+    pdf.text(`Empresa: ${$('#nomeEmpresa').value} - CNPJ: ${$('#cnpj').value}`, 10, 20);
+    pdf.save(`simulacao_${$('#mesApuracao').value}.pdf`);
+    toast('PDF gerado.');
+  }
+
+  // Inicialização
+  document.addEventListener('DOMContentLoaded', async () => {
+    criarTabsAnexos();
+    renderTabela(5);
+    await atualizarAnexoPorCNAE();
+    gerarCamposMeses();
+    gerarCamposFolha();
+
+    // Event listeners
+    $('#cnae').addEventListener('input', atualizarAnexoPorCNAE);
+    $('#btnBuscarCnae').addEventListener('click', atualizarAnexoPorCNAE);
+    $('#mesApuracao').addEventListener('change', () => { gerarCamposMeses(); gerarCamposFolha(); });
+    $('#btnMensalRBT').addEventListener('click', () => {
+      $('#btnMensalRBT').classList.add('tab-active'); $('#btnTotalRBT').classList.remove('tab-active');
+      $('#rbtMensal').classList.remove('hidden'); $('#rbtTotalWrap').classList.add('hidden');
+      $('#folhaMensal').classList.remove('hidden'); $('#folhaTotalWrap').classList.add('hidden');
+    });
+    $('#btnTotalRBT').addEventListener('click', () => {
+      $('#btnTotalRBT').classList.add('tab-active'); $('#btnMensalRBT').classList.remove('tab-active');
+      $('#rbtMensal').classList.add('hidden'); $('#rbtTotalWrap').classList.remove('hidden');
+      $('#folhaMensal').classList.add('hidden'); $('#folhaTotalWrap').classList.remove('hidden');
+      const sumRbt = [...$$('.rbt-input')].reduce((a,i)=>a+parseBR(i.value),0);
+      const sumFolha = [...$$('.folha-input')].reduce((a,i)=>a+parseBR(i.value),0);
+      $('#rbt12Total').value = fmtBR(sumRbt); $('#folhaTotal').value = fmtBR(sumFolha);
+    });
+
+    $('#calcular').addEventListener('click', calcularSimples);
+    $('#simularMesSeguinte').addEventListener('click', simularMesSeguinte);
+    $('#novaSimulacao').addEventListener('click', novaSimulacao);
+    $('#salvarHistorico').addEventListener('click', salvarHistorico);
+    $('#gerarPDF').addEventListener('click', gerarPDF);
+    document.addEventListener('click', (e) => { if (e.target.id === 'exportarPDF') gerarPDF(); });
+
+    $$('[data-step]').forEach(b => b.addEventListener('click', ()=>{
+      const n = +b.dataset.step; setStep(n);
+      const ids = ['cadastro','tabelas','apuracao','resultado'];
+      document.getElementById(ids[n-1])?.scrollIntoView({behavior:'smooth', block:'start'});
+    }));
+
+    // Inicializa máscaras
+    $$('.money').forEach(i => { i.addEventListener('input', ()=>maskMoney(i)); i.addEventListener('blur', ()=>maskMoney(i)); });
+  });
+})();
+</script>
+</body>
+</html>
